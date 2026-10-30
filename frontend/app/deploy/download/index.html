@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F9D8A" />
+  <title>大学生健康管理平台 · 学生端下载</title>
+  <link rel="icon" href="./logo-192.png" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+      color: #0f172a;
+      background:
+        radial-gradient(circle at 88% 2%, rgba(18, 179, 156, 0.18), transparent 32%),
+        linear-gradient(180deg, #ecfaf6 0%, #f4f7f6 48%, #f4f7f6 100%);
+    }
+    .wrap {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 34px 20px calc(34px + env(safe-area-inset-bottom));
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: linear-gradient(145deg, #12b39c, #0a6a61);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 12px 24px rgba(15, 157, 138, 0.24);
+    }
+    .brand-title { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+    .brand-sub { margin-top: 3px; font-size: 11px; color: #7b9a92; letter-spacing: 1.5px; }
+    .hero-card {
+      position: relative; overflow: hidden;
+      margin-top: 28px; padding: 28px 24px 24px;
+      border-radius: 26px; color: #fff;
+      background: linear-gradient(145deg, #12b39c 0%, #0f9d8a 45%, #0a6a61 100%);
+      box-shadow: 0 20px 44px rgba(8, 74, 66, 0.18);
+    }
+    .hero-card::after {
+      content: ''; position: absolute; width: 220px; height: 220px;
+      border-radius: 50%; right: -100px; top: -110px;
+      background: rgba(255, 255, 255, 0.09);
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; height: 28px; padding: 0 12px;
+      border-radius: 999px; background: rgba(255, 255, 255, 0.16);
+      font-size: 12px; letter-spacing: .5px;
+    }
+    .hero-title { position: relative; z-index: 1; margin: 18px 0 8px; font-size: 28px; line-height: 1.35; }
+    .hero-desc { position: relative; z-index: 1; margin: 0; font-size: 14px; line-height: 1.7; color: rgba(255,255,255,.78); }
+    .feature-row { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .feature {
+      height: 30px; padding: 0 12px; border-radius: 999px;
+      display: inline-flex; align-items: center;
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.16);
+      font-size: 12px; color: #e8fffa;
+    }
+    .card { margin-top: 18px; padding: 22px; border-radius: 22px; background: #fff; box-shadow: 0 10px 30px rgba(15, 118, 110, .07); }
+    .download-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      height: 56px; border-radius: 999px;
+      background: linear-gradient(135deg, #12b39c, #0b7f70);
+      color: #fff; text-decoration: none; font-size: 16px; font-weight: 700;
+      box-shadow: 0 12px 24px rgba(13, 148, 136, .22);
+    }
+    .meta { display: flex; justify-content: center; gap: 14px; margin-top: 12px; font-size: 12px; color: #94a3b8; }
+    .section-title { margin: 0 0 14px; font-size: 16px; font-weight: 700; }
+    .step { display: flex; gap: 12px; padding: 10px 0; }
+    .step-index {
+      width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%;
+      background: #e6f7f3; color: #0f766e; font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-text { font-size: 13px; line-height: 1.65; color: #475569; }
+    .notice { display: block; margin-top: 12px; padding: 14px 16px; border-radius: 14px; background: #fff8ea; font-size: 12px; line-height: 1.7; color: #a16207; }
+    .notice.blue { background: #eef7ff; color: #1d4ed8; }
+    .ios-link { color: #0f766e; font-weight: 600; }
+    .footer { margin-top: 26px; text-align: center; font-size: 11px; line-height: 1.8; color: #a8b7b2; }
+    .wechat-tip { display: none; }
+    .wechat-tip.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">
+        <svg width="34" height="34" viewBox="0 0 1024 1024" fill="none" aria-hidden="true">
+          <path d="M512 776C330 654 246 536 258 432c12-104 118-158 204-108 26 15 42 34 50 48 8-14 24-33 50-48 86-50 192 4 204 108 12 104-72 222-254 344z" stroke="#fff" stroke-width="42" stroke-linejoin="round"/>
+          <path d="M310 540h104l42-102 66 210 48-108h134" stroke="#fff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">大学生健康管理平台</div>
+        <div class="brand-sub">STUDENT HEALTH · 学生端</div>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <span class="hero-tag">Android 学生端</span>
+      <h1 class="hero-title">把健康管理<br />装进口袋里</h1>
+      <p class="hero-desc">健康档案、每日打卡、AI 健康助手、校园科普与月度报告。</p>
+      <div class="feature-row">
+        <span class="feature">每日打卡</span>
+        <span class="feature">AI 问答</span>
+        <span class="feature">健康知识</span>
+        <span class="feature">体测趋势</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <a class="download-btn" href="./health-app.apk" download>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" />
+        </svg>
+        下载 Android 安装包
+      </a>
+      <div class="meta">
+        <span>版本 1.0.0</span>
+        <span>·</span>
+        <span>仅支持 Android</span>
+        <span>·</span>
+        <span>无需应用商店</span>
+      </div>
+      <div id="wechatTip" class="notice wechat-tip">
+        <strong>微信内无法直接下载：</strong>请点击右上角“···”，选择“在浏览器打开”后再下载。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">安装步骤</h2>
+      <div class="step">
+        <div class="step-index">1</div>
+        <div class="step-text">点击上方按钮下载 APK 安装包。</div>
+      </div>
+      <div class="step">
+        <div class="step-index">2</div>
+        <div class="step-text">如果手机提示“禁止安装未知来源应用”，请在系统设置中允许当前浏览器安装应用。</div>
+      </div>
+      <div class="step">
+        <div class="step-index">3</div>
+        <div class="step-text">安装完成后打开 App，使用已注册账号登录；没有账号可在登录页直接注册。</div>
+      </div>
+      <div class="notice">
+        <strong>安全提示：</strong>请只从本页面下载安装包；如果安装时出现风险提示，请确认下载来源为官方服务器。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">使用 iOS？</h2>
+      <div class="notice blue">
+        iOS 不能安装 Android APK。请使用手机浏览器访问
+        <a class="ios-link" href="/">网页版</a>
+        继续使用；如需上架 App Store，需要额外的开发者账号与审核流程。
+      </div>
+    </div>
+
+    <div class="footer">
+      大学生健康管理平台<br />
+      数据仅用于健康管理
+    </div>
+  </div>
+
+  <script>
+    // 微信/QQ 内置浏览器会拦截 APK 下载，给出明确提示
+    var ua = navigator.userAgent.toLowerCase();
+    if (ua.indexOf('micromessenger') > -1 || ua.indexOf('qq/') > -1) {
+      document.getElementById('wechatTip').classList.add('show');
+    }
+  </script>
+</body>
+</html>

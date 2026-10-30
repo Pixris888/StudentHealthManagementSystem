@@ -1,0 +1,79 @@
+# 大学生健康管理平台 · H5 + APK 下载 Nginx 示例
+# 请把域名、证书路径、静态目录替换成实际值。
+
+server {
+    listen 80;
+    server_name health.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name health.example.com;
+
+    ssl_certificate     /etc/nginx/ssl/health.example.com.pem;
+    ssl_certificate_key /etc/nginx/ssl/health.example.com.key;
+
+    # H5 构建产物：npm run build:h5 -> dist/build/h5
+    root /var/www/health-app;
+    index index.html;
+    # 打卡照片/Excel 导入；Nginx 默认 1M 会 413
+    client_max_body_size 20m;
+
+    # AI SSE 流式接口：必须关闭缓冲，否则前端会等整段回答结束才显示
+    location = /api/ai/consultation/ask/stream {
+        proxy_pass http://127.0.0.1:8888/api/ai/consultation/ask/stream;
+        proxy_http_version 1.1;
+        proxy_set_header Connection '';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        gzip off;
+        add_header X-Accel-Buffering no;
+        proxy_read_timeout 200s;
+    }
+
+    # 后端接口
+    location /api/ {
+        proxy_pass http://127.0.0.1:8888/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # 同步 AI / 计划生成最坏约 165 秒
+        proxy_read_timeout 200s;
+        proxy_send_timeout 200s;
+    }
+
+    # 打卡照片（后端本地存储模式）
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:8888/uploads/;
+        proxy_set_header Host $host;
+    }
+
+    # 下载页（index.html + logo）
+    location /download/ {
+        alias /var/www/download/;
+        index index.html;
+    }
+
+    location = /download {
+        return 301 /download/;
+    }
+
+    # APK 文件：正确的 MIME + 强制下载
+    location = /download/health-app.apk {
+        alias /var/www/download/health-app.apk;
+        default_type application/vnd.android.package-archive;
+        add_header Content-Disposition "attachment";
+        add_header Cache-Control "no-store";
+    }
+
+    # H5 使用 hash 路由，正常静态文件即可
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

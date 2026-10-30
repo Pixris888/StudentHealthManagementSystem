@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.health.management.mapper.MessageReadMapper">
+
+    <!-- 写入单条已读记录；唯一键保证重复点击不会产生多条记录。 -->
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO message_read (message_id, user_id, read_time, create_time, deleted)
+        VALUES (#{messageId}, #{userId}, #{readTime}, NOW(), 0)
+    </insert>
+
+    <!-- 批量写已读记录。 -->
+    <insert id="insertIgnoreBatch">
+        INSERT IGNORE INTO message_read (message_id, user_id, read_time, create_time, deleted)
+        VALUES
+        <foreach collection="messageIds" item="messageId" separator=",">
+            (#{messageId}, #{userId}, #{readTime}, NOW(), 0)
+        </foreach>
+    </insert>
+
+</mapper>

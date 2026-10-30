@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.health.management.mapper.SysUserMapper">
+
+    <!-- 用户名唯一性检查：包含逻辑删除记录，避免数据库唯一索引报错但提示不友好 -->
+    <select id="countByUsernameIncludingDeleted" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_user
+        WHERE username = #{username}
+    </select>
+
+    <select id="countByStudentNoIncludingDeleted" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_user
+        WHERE student_no = #{studentNo}
+    </select>
+
+    <select id="countByStudentNoExcludingId" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_user
+        WHERE student_no = #{studentNo}
+          AND id &lt;&gt; #{id}
+    </select>
+
+    <!-- JWT 过滤器每请求只查这几个字段，避免加载密码 -->
+    <select id="selectAuthStateById" resultType="com.health.management.entity.SysUser">
+        SELECT id, status, token_version
+        FROM sys_user
+        WHERE id = #{id}
+          AND deleted = 0
+    </select>
+
+    <!-- 事务内锁定用户行，用于最后管理员/自我保护校验 -->
+    <select id="selectByIdForUpdate" resultType="com.health.management.entity.SysUser">
+        SELECT *
+        FROM sys_user
+        WHERE id = #{id}
+          AND deleted = 0
+        FOR UPDATE
+    </select>
+
+    <update id="incrementTokenVersionById">
+        UPDATE sys_user
+        SET token_version = token_version + 1,
+            update_time   = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

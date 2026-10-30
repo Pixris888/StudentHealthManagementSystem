@@ -1,0 +1,30 @@
+package com.health.management.client.ai;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * OpenAI 兼容接口的一条消息。
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class LlmMessage {
+
+    private String role;
+
+    private String content;
+
+    public static LlmMessage system(String content) {
+        return new LlmMessage("system", content);
+    }
+
+    public static LlmMessage user(String content) {
+        return new LlmMessage("user", content);
+    }
+
+    public static LlmMessage assistant(String content) {
+        return new LlmMessage("assistant", content);
+    }
+}

@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="healthLogoGradient" x1="8" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3DDC97"/>
+      <stop offset="1" stop-color="#14745A"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#healthLogoGradient)"/>
+  <path d="M18 33.5H26L30 23L36.5 42L41 33.5H46" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 14V20M32 47V53M14 32H20M44 32H50" stroke="white" stroke-opacity="0.9" stroke-width="3" stroke-linecap="round"/>
+</svg>

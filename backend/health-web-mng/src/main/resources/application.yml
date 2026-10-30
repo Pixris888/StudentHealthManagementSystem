@@ -1,0 +1,144 @@
+server:
+  port: 8888
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: health-management
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:health_management}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: 3000ms
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      # 体测 Excel 导入、打卡照片上传
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.health.management.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+jwt:
+  secret: ${JWT_SECRET:dev-only-change-me-to-a-long-random-secret}
+  # Access Token 30 分钟
+  access-expiration: 1800000
+  # Refresh Token 7 天
+  refresh-expiration: 604800000
+
+# ---------- 文件存储：本地磁盘 / 阿里云 OSS ----------
+storage:
+  # local=本地磁盘（开发默认），oss=阿里云 OSS 私有 Bucket
+  type: ${STORAGE_TYPE:local}
+  # 默认放到用户目录，避免项目路径包含中文时静态资源解析失败
+  local-path: ${UPLOAD_DIR:./uploads}
+  url-prefix: /uploads
+  # OSS 私有读签名 URL 有效期（分钟）
+  signed-url-expire-minutes: 30
+
+aliyun:
+  oss:
+    # 使用 OSS 时通过环境变量传入，不要写死在代码仓库
+    endpoint: ${OSS_ENDPOINT:}
+    bucket-name: ${OSS_BUCKET:}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    checkin-dir: health/checkin/
+
+# ---------- 健康打卡规则 ----------
+health:
+  checkin:
+    # 允许补最近 7 天（含今天）
+    backfill-days: 7
+    # 单次计时会话最大 24 小时
+    session-max-hours: 24
+    # 每条打卡最多 6 张照片
+    max-photos: 6
+    # 数据质量异常阈值
+    sleep-min-hours: 3
+    sleep-max-hours: 12
+    exercise-max-minutes: 300
+    water-max-ml: 5000
+
+  # ---------- 消息通知 / 健康预警 ----------
+  message:
+    # 每天 08:00 扫描昨天的打卡数据
+    warning-cron: "0 0 8 * * ?"
+    # 默认只扫描昨天；如需补卡后补发，可改为 7
+    warning-lookback-days: 1
+    # 单次群发最多接收人数
+    max-recipients: 100
+    # 预警任务 Redis 锁时长（分钟）
+    warning-lock-minutes: 10
+
+  # ---------- AI 健康助手 ----------
+  ai:
+    # 关闭或 provider=mock 时走 Mock，保证接口可联调
+    enabled: true
+    # bailian=阿里百炼主模型，ollama=本地模型，mock=不调用真实模型
+    provider: ${AI_PROVIDER:bailian}
+    # 百炼 OpenAI 兼容接口
+    # 注意：工作空间 MaaS 的 OpenAI 兼容地址必须以 /compatible-mode/v1 结尾；
+    # 写成 /api/v1 再拼 /chat/completions 会 404。
+    base-url: "${AI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}"
+    # 不要把 Key 写死在仓库；开发期通过 IDE 环境变量，部署时通过环境变量注入
+    api-key: ${DASHSCOPE_API_KEY:}
+    model: ${AI_MODEL:qwen-plus}
+    # DeepSeek/Qwen3 等思考模型：关闭思考，避免 reasoning_content 占满 max_tokens 导致 content 为空
+    enable-thinking: false
+    temperature: 0.4
+    max-tokens: 1200
+    timeout-seconds: 45
+    daily-limit: 30
+    plan-daily-limit: 10
+    max-input-length: 500
+    retrieve-limit: 4
+    history-rounds: 3
+    # SSE 流式问答开关；关闭后 /ask/stream 返回业务错误，前端回退到同步接口
+    stream-enabled: true
+    # SSE 连接超时（秒），需大于主模型 + 备用模型的最长耗时
+    stream-timeout-seconds: 180
+    # 等待首字期间的心跳间隔（秒），用于保活和探测前端断连
+    stream-heartbeat-seconds: 15
+    # 流式任务线程池，避免慢模型占满 Tomcat 请求线程
+    stream-core-pool-size: 4
+    stream-max-pool-size: 8
+    stream-queue-capacity: 50
+    # 本地 Ollama 备用模型（原生 /api/chat，支持关闭 Qwen3 思考）
+    fallback:
+      enabled: true
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      model: ${OLLAMA_MODEL:qwen3:0.6b}
+      timeout-seconds: 120
+      max-tokens: 800
+
+  # ---------- 数据备份 ----------
+  backup:
+    # 备份文件只允许超管下载，不要放在 /uploads 静态资源目录下
+    dir: ${BACKUP_DIR:./backup}

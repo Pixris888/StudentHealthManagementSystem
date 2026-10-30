@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.health.management.mapper.SysRoleMenuMapper">
+
+    <select id="selectByRoleId" resultType="com.health.management.entity.SysRoleMenu">
+        SELECT *
+        FROM sys_role_menu
+        WHERE role_id = #{roleId}
+          AND deleted = 0
+    </select>
+
+    <select id="selectByMenuId" resultType="com.health.management.entity.SysRoleMenu">
+        SELECT *
+        FROM sys_role_menu
+        WHERE menu_id = #{menuId}
+          AND deleted = 0
+    </select>
+
+    <!-- 关联表物理删除，避免逻辑删除与唯一索引冲突 -->
+    <delete id="deleteByRoleIdPhysically">
+        DELETE FROM sys_role_menu
+        WHERE role_id = #{roleId}
+    </delete>
+
+    <!-- 菜单被角色引用数量，删除菜单前校验 -->
+    <select id="countByMenuId" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_role_menu rm
+        JOIN sys_role r ON r.id = rm.role_id
+        WHERE rm.menu_id = #{menuId}
+          AND rm.deleted = 0
+          AND r.deleted = 0
+    </select>
+
+</mapper>

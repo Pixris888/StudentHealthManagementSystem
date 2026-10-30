@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.health.management.mapper.ReportStatisticsMapper">
+
+    <!-- 学生 + 档案 + 指定月份打卡；所有统计都基于这个连接 -->
+    <sql id="studentJoins">
+        FROM sys_user u
+        LEFT JOIN health_profile p ON p.user_id = u.id AND p.deleted = 0
+        LEFT JOIN health_checkin c ON c.user_id = u.id AND c.deleted = 0
+             AND c.checkin_date BETWEEN #{start} AND #{end}
+    </sql>
+
+    <sql id="studentWhere">
+        WHERE u.user_type = 1 AND u.status = 1 AND u.deleted = 0
+        <if test="college != null and college != ''">
+            AND COALESCE(NULLIF(p.college, ''), NULLIF(u.dept_name, ''), '未填写') = #{college}
+        </if>
+        <if test="grade != null and grade != ''">
+            AND p.grade = #{grade}
+        </if>
+    </sql>
+
+    <!-- 看板 KPI：学生总数、打卡参与、睡眠/熬夜/运动/心情/早餐/异常 -->
+    <select id="selectOverview" resultType="com.health.management.vo.report.DashboardOverviewRow">
+        SELECT COUNT(DISTINCT u.id) AS studentTotal,
+               COUNT(DISTINCT c.user_id) AS checkinStudents,
+               COUNT(c.id) AS checkinRecords,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.sleep_duration END) AS avgSleepDuration,
+               SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late = 1 THEN 1 ELSE 0 END) AS stayUpLateCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late IS NOT NULL THEN 1 ELSE 0 END) AS sleepFilledCount,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.exercise_duration END) AS avgExerciseDuration,
+               SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient = 1 THEN 1 ELSE 0 END) AS exerciseSufficientCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient IS NOT NULL THEN 1 ELSE 0 END) AS exerciseFilledCount,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.mood_score END) AS avgMoodScore,
+               SUM(CASE WHEN c.data_quality = 0 AND c.diet_breakfast = 1 THEN 1 ELSE 0 END) AS breakfastCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.diet_breakfast IS NOT NULL THEN 1 ELSE 0 END) AS breakfastFilledCount,
+               SUM(CASE WHEN c.data_quality = 1 THEN 1 ELSE 0 END) AS abnormalRecords
+        <include refid="studentJoins"/>
+        <include refid="studentWhere"/>
+    </select>
+
+    <!-- 每日趋势 -->
+    <select id="selectTrend" resultType="com.health.management.vo.report.TrendPointVO">
+        SELECT c.checkin_date AS date,
+               COUNT(DISTINCT c.user_id) AS checkinStudents,
+               COUNT(c.id) AS checkinRecords,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.sleep_duration END) AS avgSleepDuration,
+               SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late = 1 THEN 1 ELSE 0 END) AS stayUpLateCount,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.exercise_duration END) AS avgExerciseDuration,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.mood_score END) AS avgMoodScore
+        <include refid="studentJoins"/>
+        <include refid="studentWhere"/>
+          AND c.id IS NOT NULL
+        GROUP BY c.checkin_date
+        ORDER BY c.checkin_date ASC
+    </select>
+
+    <!-- 学院维度 -->
+    <select id="selectCollegeDistribution"
+            resultType="com.health.management.vo.report.CollegeDistributionRow">
+        SELECT COALESCE(NULLIF(p.college, ''), NULLIF(u.dept_name, ''), '未填写') AS college,
+               COUNT(DISTINCT u.id) AS studentCount,
+               COUNT(DISTINCT c.user_id) AS checkinStudents,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.sleep_duration END) AS avgSleepDuration,
+               SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late = 1 THEN 1 ELSE 0 END) AS stayUpLateCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late IS NOT NULL THEN 1 ELSE 0 END) AS sleepFilledCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient = 1 THEN 1 ELSE 0 END) AS exerciseSufficientCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient IS NOT NULL THEN 1 ELSE 0 END) AS exerciseFilledCount
+        <include refid="studentJoins"/>
+        <include refid="studentWhere"/>
+        GROUP BY COALESCE(NULLIF(p.college, ''), NULLIF(u.dept_name, ''), '未填写')
+        ORDER BY studentCount DESC, college ASC
+    </select>
+
+    <!-- 情绪分布（仅正常数据） -->
+    <select id="selectEmotionDistribution"
+            resultType="com.health.management.vo.report.EmotionDistributionVO">
+        SELECT c.emotion_type AS emotionType,
+               CASE c.emotion_type
+                   WHEN 1 THEN '愉悦'
+                   WHEN 2 THEN '平静'
+                   WHEN 3 THEN '焦虑'
+                   WHEN 4 THEN '低落'
+                   WHEN 5 THEN '愤怒'
+                   ELSE '未知'
+               END AS emotionName,
+               COUNT(*) AS `count`
+        <include refid="studentJoins"/>
+        <include refid="studentWhere"/>
+          AND c.id IS NOT NULL
+          AND c.data_quality = 0
+          AND c.emotion_type IS NOT NULL
+        GROUP BY c.emotion_type
+        ORDER BY `count` DESC
+    </select>
+
+    <!-- 台账公共 SELECT -->
+    <sql id="ledgerSelect">
+        SELECT u.id AS userId,
+               u.student_no AS studentNo,
+               u.real_name AS realName,
+               COALESCE(NULLIF(p.college, ''), NULLIF(u.dept_name, ''), '未填写') AS college,
+               p.major AS major,
+               p.grade AS grade,
+               p.class_name AS className,
+               COUNT(c.id) AS checkinDays,
+               SUM(CASE WHEN c.data_quality = 0 THEN 1 ELSE 0 END) AS validDays,
+               SUM(CASE WHEN c.data_quality = 1 THEN 1 ELSE 0 END) AS abnormalDays,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.sleep_duration END) AS avgSleepDuration,
+               SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late = 1 THEN 1 ELSE 0 END) AS stayUpLateCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late IS NOT NULL THEN 1 ELSE 0 END) AS sleepFilledCount,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.exercise_duration END) AS avgExerciseDuration,
+               SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient = 0 THEN 1 ELSE 0 END) AS exerciseInsufficientCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient = 1 THEN 1 ELSE 0 END) AS exerciseSufficientCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient IS NOT NULL THEN 1 ELSE 0 END) AS exerciseFilledCount,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.mood_score END) AS avgMoodScore,
+               SUM(CASE WHEN c.data_quality = 0 AND c.diet_breakfast = 1 THEN 1 ELSE 0 END) AS breakfastCount,
+               SUM(CASE WHEN c.data_quality = 0 AND c.diet_breakfast IS NOT NULL THEN 1 ELSE 0 END) AS breakfastFilledCount,
+               AVG(CASE WHEN c.data_quality = 0 THEN c.water_intake END) AS avgWaterIntake,
+               p.bmi AS bmi
+        <include refid="studentJoins"/>
+        <include refid="studentWhere"/>
+    </sql>
+
+    <sql id="ledgerGroupBy">
+        GROUP BY u.id, u.student_no, u.real_name, p.college, u.dept_name,
+                 p.major, p.grade, p.class_name, p.bmi
+    </sql>
+
+    <select id="selectLedgerPage" resultType="com.health.management.vo.report.LedgerRowVO">
+        <include refid="ledgerSelect"/>
+        <if test="className != null and className != ''">
+            AND p.class_name = #{className}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.student_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.real_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <include refid="ledgerGroupBy"/>
+        ORDER BY u.student_no ASC, u.id ASC
+    </select>
+
+    <select id="selectLedgerList" resultType="com.health.management.vo.report.LedgerRowVO">
+        <include refid="ledgerSelect"/>
+        <if test="className != null and className != ''">
+            AND p.class_name = #{className}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.student_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.real_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <include refid="ledgerGroupBy"/>
+        ORDER BY college ASC, u.student_no ASC, u.id ASC
+    </select>
+
+    <!-- 需关注学生：熬夜≥3、运动不足≥5、异常数据≥3 -->
+    <select id="selectRiskRows" resultType="com.health.management.vo.report.LedgerRowVO">
+        <include refid="ledgerSelect"/>
+        <include refid="ledgerGroupBy"/>
+        HAVING (
+            SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late = 1 THEN 1 ELSE 0 END) >= 3
+            OR SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient = 0 THEN 1 ELSE 0 END) >= 5
+            OR SUM(CASE WHEN c.data_quality = 1 THEN 1 ELSE 0 END) >= 3
+        )
+        ORDER BY SUM(CASE WHEN c.data_quality = 0 AND c.stay_up_late = 1 THEN 1 ELSE 0 END) DESC,
+                 SUM(CASE WHEN c.data_quality = 0 AND c.exercise_sufficient = 0 THEN 1 ELSE 0 END) DESC
+        LIMIT 20
+    </select>
+
+    <select id="selectColleges" resultType="java.lang.String">
+        SELECT DISTINCT COALESCE(NULLIF(p.college, ''), NULLIF(u.dept_name, '')) AS college
+        FROM sys_user u
+        LEFT JOIN health_profile p ON p.user_id = u.id AND p.deleted = 0
+        WHERE u.user_type = 1 AND u.status = 1 AND u.deleted = 0
+          AND COALESCE(NULLIF(p.college, ''), NULLIF(u.dept_name, '')) IS NOT NULL
+          AND COALESCE(NULLIF(p.college, ''), NULLIF(u.dept_name, '')) != ''
+        ORDER BY college ASC
+    </select>
+
+    <select id="selectGrades" resultType="java.lang.String">
+        SELECT DISTINCT p.grade
+        FROM health_profile p
+        JOIN sys_user u ON u.id = p.user_id AND u.user_type = 1 AND u.status = 1 AND u.deleted = 0
+        WHERE p.deleted = 0 AND p.grade IS NOT NULL AND p.grade != ''
+        ORDER BY p.grade ASC
+    </select>
+
+    <select id="selectClasses" resultType="java.lang.String">
+        SELECT DISTINCT p.class_name
+        FROM health_profile p
+        JOIN sys_user u ON u.id = p.user_id AND u.user_type = 1 AND u.status = 1 AND u.deleted = 0
+        WHERE p.deleted = 0 AND p.class_name IS NOT NULL AND p.class_name != ''
+        ORDER BY p.class_name ASC
+    </select>
+
+</mapper>

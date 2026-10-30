@@ -1,0 +1,118 @@
+# 大学生健康管理平台 · Docker Compose 一键部署
+#
+# 放置位置：/opt/project/compose/docker-compose.yml
+# 启动：cd /opt/project/compose && docker compose up -d
+#
+# 说明：
+# - MySQL / Redis 只加入内部网络，不向宿主机发布端口
+# - 后端只绑定宿主机 127.0.0.1:8888，便于本机排查
+# - Nginx 对外提供 PC(80) 和 App H5 + 下载页(8080)
+# - jar、前端 dist、配置文件均为本地构建后挂载，不在服务器上编译
+
+name: health-platform
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: health-mysql
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_DATABASE: ${DB_NAME:-health_management}
+      MYSQL_USER: ${DB_USERNAME:-health}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+    command:
+      - --default-time-zone=+08:00
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+    volumes:
+      # MySQL 数据目录；目录为空时首次启动自动建表并导入演示数据
+      - ../docker/mysql/data:/var/lib/mysql:z
+      - ../sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro,z
+      - ../sql/demo-data.sql:/docker-entrypoint-initdb.d/02-demo-data.sql:ro,z
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - MYSQL_PWD="$$MYSQL_PASSWORD" mysqladmin ping -h 127.0.0.1 -u"$$MYSQL_USER" --silent
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: health-redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
+    command: sh -c 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"'
+    volumes:
+      - ../docker/redis/data:/data:z
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli -a "$$REDIS_PASSWORD" ping | grep -q PONG
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    image: eclipse-temurin:17-jre
+    container_name: health-backend
+    restart: unless-stopped
+    working_dir: /opt/project/backend
+    env_file:
+      - ./.env
+    environment:
+      TZ: Asia/Shanghai
+      # 容器内通过 Compose 服务名访问，覆盖 .env 里的 127.0.0.1
+      DB_HOST: mysql
+      REDIS_HOST: redis
+    command:
+      - java
+      - -Xms256m
+      - -Xmx512m
+      - -XX:MaxMetaspaceSize=192m
+      - -jar
+      - /opt/project/jar/health-web-mng-1.0.0.jar
+      - --spring.profiles.active=prod
+      # application-prod.yml 里为宿主机模式写的 127.0.0.1，在容器网络中必须改回 0.0.0.0
+      - --server.address=0.0.0.0
+    volumes:
+      - ../jar:/opt/project/jar:ro,z
+      - ../backend/config:/opt/project/backend/config:ro,z
+      - ../files:/opt/project/files:z
+      - ../backup:/opt/project/backup:z
+      - ../logs:/opt/project/logs:z
+    ports:
+      - "127.0.0.1:8888:8888"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.26
+    container_name: health-nginx
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro,z
+      - ./nginx/snippets:/etc/nginx/snippets:ro,z
+      - ../docker/nginx/html:/var/www:ro,z
+      - ../docker/nginx/ssl:/etc/nginx/ssl:ro,z
+      - ../docker/nginx/logs:/var/log/nginx:z
+    depends_on:
+      - backend
+
+networks:
+  default:
+    name: health-net

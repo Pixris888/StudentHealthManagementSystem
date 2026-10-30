@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.health.management.mapper.SysUserRoleMapper">
+
+    <select id="selectByUserId" resultType="com.health.management.entity.SysUserRole">
+        SELECT *
+        FROM sys_user_role
+        WHERE user_id = #{userId}
+          AND deleted = 0
+    </select>
+
+    <select id="selectByUserIds" resultType="com.health.management.entity.SysUserRole">
+        SELECT *
+        FROM sys_user_role
+        WHERE deleted = 0
+          AND user_id IN
+        <foreach collection="userIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="countByRoleId" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_user_role
+        WHERE role_id = #{roleId}
+          AND deleted = 0
+    </select>
+
+    <select id="selectUserIdsByRoleId" resultType="java.lang.Long">
+        SELECT DISTINCT user_id
+        FROM sys_user_role
+        WHERE role_id = #{roleId}
+          AND deleted = 0
+    </select>
+
+    <!-- 关联表物理删除，避免逻辑删除与唯一索引冲突 -->
+    <delete id="deleteByUserIdPhysically">
+        DELETE FROM sys_user_role
+        WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 统计拥有指定角色且启用、未删除的用户数 -->
+    <select id="countEnabledUsersByRoleCode" resultType="int">
+        SELECT COUNT(DISTINCT ur.user_id)
+        FROM sys_user_role ur
+        JOIN sys_role r ON r.id = ur.role_id
+        JOIN sys_user u ON u.id = ur.user_id
+        WHERE r.role_code = #{roleCode}
+          AND r.deleted = 0
+          AND ur.deleted = 0
+          AND u.deleted = 0
+          AND u.status = 1
+    </select>
+
+    <select id="countByUserIdAndRoleCode" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_user_role ur
+        JOIN sys_role r ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId}
+          AND r.role_code = #{roleCode}
+          AND ur.deleted = 0
+          AND r.deleted = 0
+    </select>
+
+    <!-- 角色权限变化后，让该角色下所有用户的旧 token 失效 -->
+    <update id="incrementTokenVersionByRoleId">
+        UPDATE sys_user u
+            JOIN sys_user_role ur ON ur.user_id = u.id
+        SET u.token_version = u.token_version + 1,
+            u.update_time   = NOW()
+        WHERE ur.role_id = #{roleId}
+          AND ur.deleted = 0
+          AND u.deleted = 0
+    </update>
+
+</mapper>

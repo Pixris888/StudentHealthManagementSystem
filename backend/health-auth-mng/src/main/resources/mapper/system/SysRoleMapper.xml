@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.health.management.mapper.SysRoleMapper">
+
+    <!-- 只加载启用且未删除的角色 -->
+    <select id="selectEnabledRolesByUserId" resultType="com.health.management.entity.SysRole">
+        SELECT r.*
+        FROM sys_role r
+        JOIN sys_user_role ur ON ur.role_id = r.id
+        WHERE ur.user_id = #{userId}
+          AND ur.deleted = 0
+          AND r.deleted = 0
+          AND r.status = 1
+        ORDER BY r.role_sort ASC, r.id ASC
+    </select>
+
+    <select id="countByRoleCodeIncludingDeleted" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_role
+        WHERE role_code = #{roleCode}
+    </select>
+
+    <select id="countByRoleCodeExcludingId" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_role
+        WHERE role_code = #{roleCode}
+          AND id &lt;&gt; #{id}
+    </select>
+
+    <!-- 按编码加载启用且未删除的角色，用于自主注册绑定内置角色 -->
+    <select id="selectEnabledByRoleCode" resultType="com.health.management.entity.SysRole">
+        SELECT *
+        FROM sys_role
+        WHERE role_code = #{roleCode}
+          AND status = 1
+          AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 锁定超级管理员角色行，串行化“最后一个管理员”相关操作 -->
+    <select id="selectByRoleCodeForUpdate" resultType="com.health.management.entity.SysRole">
+        SELECT *
+        FROM sys_role
+        WHERE role_code = #{roleCode}
+          AND deleted = 0
+        FOR UPDATE
+    </select>
+
+</mapper>

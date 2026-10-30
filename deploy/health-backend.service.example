@@ -1,0 +1,26 @@
+# 复制到 /etc/systemd/system/health-backend.service
+# 注意：ExecStart 里的 java 路径用 `readlink -f $(which java)` 确认为 JDK 17
+# 2G 内存建议 -Xms256m -Xmx768m；4G 可改成 -Xms512m -Xmx1g
+
+[Unit]
+Description=Health Management Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=health
+Group=health
+WorkingDirectory=/opt/health/app
+EnvironmentFile=/opt/health/app/.env
+ExecStart=/usr/bin/java -Xms256m -Xmx768m -jar /opt/health/app/health-web-mng-1.0.0.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+SyslogIdentifier=health-backend
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.health.management.mapper.MessageNotificationMapper">
+
+    <!-- 收件箱：个人消息 + 全体广播；LEFT JOIN 已读表得到 readStatus -->
+    <select id="selectInboxPage" resultType="com.health.management.vo.MessageVO">
+        SELECT n.id,
+               n.receiver_id    AS receiverId,
+               n.message_type   AS messageType,
+               n.title,
+               n.content,
+               n.sender_id      AS senderId,
+               n.send_type      AS sendType,
+               n.publish_time   AS publishTime,
+               n.create_time    AS createTime,
+               CASE WHEN r.id IS NULL THEN 0 ELSE 1 END AS readStatus,
+               r.read_time      AS readTime
+        FROM message_notification n
+        LEFT JOIN message_read r
+               ON r.message_id = n.id
+              AND r.user_id = #{userId}
+              AND r.deleted = 0
+        WHERE n.deleted = 0
+          AND (
+                n.receiver_id = #{userId}
+                OR (n.receiver_id = 0 AND n.send_type = 2)
+              )
+        <if test="query.messageType != null">
+            AND n.message_type = #{query.messageType}
+        </if>
+        <if test="query.readStatus != null and query.readStatus == 0">
+            AND r.id IS NULL
+        </if>
+        <if test="query.readStatus != null and query.readStatus == 1">
+            AND r.id IS NOT NULL
+        </if>
+        ORDER BY n.publish_time DESC, n.id DESC
+    </select>
+
+    <select id="countUnread" resultType="long">
+        SELECT COUNT(1)
+        FROM message_notification n
+        WHERE n.deleted = 0
+          AND (
+                n.receiver_id = #{userId}
+                OR (n.receiver_id = 0 AND n.send_type = 2)
+              )
+          AND NOT EXISTS (
+                SELECT 1
+                FROM message_read r
+                WHERE r.message_id = n.id
+                  AND r.user_id = #{userId}
+                  AND r.deleted = 0
+              )
+    </select>
+
+    <select id="selectUnreadIds" resultType="long">
+        SELECT n.id
+        FROM message_notification n
+        WHERE n.deleted = 0
+          AND (
+                n.receiver_id = #{userId}
+                OR (n.receiver_id = 0 AND n.send_type = 2)
+              )
+          AND NOT EXISTS (
+                SELECT 1
+                FROM message_read r
+                WHERE r.message_id = n.id
+                  AND r.user_id = #{userId}
+                  AND r.deleted = 0
+              )
+    </select>
+
+    <insert id="insertIgnoreBatch">
+        INSERT IGNORE INTO message_notification
+            (receiver_id, message_type, title, content, sender_id, send_type,
+             publish_time, dedup_key, create_by, create_time, update_by, update_time,
+             deleted, remark)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.receiverId}, #{item.messageType}, #{item.title}, #{item.content},
+             #{item.senderId}, #{item.sendType}, #{item.publishTime}, #{item.dedupKey},
+             #{item.createBy}, #{item.createTime}, #{item.updateBy}, #{item.updateTime},
+             0, #{item.remark})
+        </foreach>
+    </insert>
+
+</mapper>
